@@ -1,0 +1,26 @@
+# Base configuration for a 10M parameter model training run
+output_dir: "models/10M"
+train_dataset_path: "data/tokenized/10M/train"
+
+# --- Model ---
+tokenizer_path: "tokenizer/10M"
+model_arch_type: "gpt2"
+train_from_scratch: true
+model_size_tag: "gpt2-10m"
+
+# --- Training Hyperparameters ---
+num_train_epochs: 5
+per_device_train_batch_size: 16
+gradient_accumulation_steps: 2
+learning_rate: 5e-5
+lr_scheduler_type: "cosine"
+num_warmup_steps: 50
+
+# --- Logging & Saving ---
+logging_steps: 100
+save_steps: 1000
+
+# --- Hardware & Seed ---
+use_amp: false
+num_workers: 4
+seed: 42
