@@ -1,7 +1,3 @@
-Of course. Here is a simple and clear README file for the project. It covers the project's purpose, structure, and a step-by-step guide on how to run the full pipeline, from raw data to a trained model.
-
----
-
 # Italian Language Model Training Pipeline
 
 This repository contains a flexible and modular pipeline for training Italian language models from scratch. It is designed to facilitate experimentation with different model sizes, architectures, and training datasets.
