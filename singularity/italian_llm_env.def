@@ -3,7 +3,6 @@ From: python:3.9-slim-bookworm
 
 %files
     # Only copy the requirements.txt file, which is needed for the build.
-    # The source code will be mounted at runtime.
     requirements.txt /requirements.txt
 
 %environment
@@ -30,8 +29,10 @@ From: python:3.9-slim-bookworm
     python3 -m pip install --upgrade pip wheel setuptools
 
     # --- PyTorch Installation for CUDA 11.8 ---
+    # This command uses a known-good set of compatible versions for torch,
+    # torchvision, and torchaudio for CUDA 11.8.
     echo "Installing PyTorch for CUDA 11.8..."
-    pip install --no-cache-dir torch==2.3.0 torchvision==2.4.0 torchaudio==2.3.0 --index-url https://download.pytorch.org/whl/cu118
+    pip install --no-cache-dir torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu118
 
     # Install other Python packages from the requirements.txt at the root
     echo "Installing Python requirements from /requirements.txt..."
