@@ -5,7 +5,7 @@ import json
 import logging
 import random
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union, List, Set
 
 import numpy as np
 import torch
@@ -60,7 +60,28 @@ class Trainer:
         self.total_loss_since_logging = 0.0
         self.steps_since_logging = 0
 
-        # Load checkpoint if path is provided
+        self.checkpoint_schedule_set: Optional[Set[int]] = None
+
+        # Prioritize the custom schedule if provided
+        if self.config.checkpoint_schedule:
+            self.checkpoint_schedule_set = set(self.config.checkpoint_schedule)
+            if self.is_main_process:
+                self.logger.info(
+                    f"Using a custom checkpoint schedule with {len(self.checkpoint_schedule_set)} specific steps.")
+        else:
+            # Fallback to log-step + periodic saving if no schedule is given
+            self.log_save_steps = set()
+            if self.config.save_steps > 0:
+                current_log_step = 1
+                while current_log_step < self.config.save_steps:
+                    self.log_save_steps.add(current_log_step)
+                    next_log_step = current_log_step * 2
+                    if next_log_step <= current_log_step: break
+                    current_log_step = next_log_step
+            if self.is_main_process:
+                self.logger.info(
+                    f"Using periodic saving every {self.config.save_steps} steps, with log-step checkpoints at: {sorted(list(self.log_save_steps))}")
+
         if self.config.checkpoint_path:
             self._load_checkpoint()
 
@@ -224,10 +245,21 @@ class Trainer:
                     self.global_step += 1
                     progress_bar.update(1)
 
-                    if self.global_step % self.config.logging_steps == 0:
-                        self._log_metrics()
+                    # --- MODIFIED SAVE CONDITION ---
+                    should_save = False
+                    if self.checkpoint_schedule_set:
+                        # Use the custom schedule if it exists
+                        if self.global_step in self.checkpoint_schedule_set:
+                            should_save = True
+                    else:
+                        # Fallback to the old periodic/log-step logic
+                        is_log_save_step = self.global_step in self.log_save_steps
+                        is_regular_save_step = (
+                                    self.config.save_steps > 0 and self.global_step > 0 and self.global_step % self.config.save_steps == 0)
+                        if is_log_save_step or is_regular_save_step:
+                            should_save = True
 
-                    if self.global_step % self.config.save_steps == 0:
+                    if should_save:
                         self._save_checkpoint()
 
                 if max_steps > 0 and self.global_step >= max_steps:

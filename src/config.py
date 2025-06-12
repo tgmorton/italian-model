@@ -2,7 +2,7 @@
 
 from enum import Enum
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal, Optional, List
 
 from pydantic import (BaseModel, DirectoryPath, FilePath, PositiveInt,
                       field_validator)
@@ -57,6 +57,8 @@ class TrainingConfig(BaseModel):
     # === Logging & Saving ===
     logging_steps: PositiveInt = 100
     save_steps: PositiveInt = 500
+
+    checkpoint_schedule: Optional[List[int]] = None
 
     @field_validator("model_size_tag")
     @classmethod
