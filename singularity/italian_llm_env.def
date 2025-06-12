@@ -2,22 +2,15 @@ Bootstrap: docker
 From: python:3.9-slim-bookworm
 
 %files
-    # Copy the necessary project files into the container at /opt/app
-    requirements.txt /opt/app/requirements.txt
-    src/ /opt/app/src/
-    configs/ /opt/app/configs/
+    # Only copy the requirements.txt file, which is needed for the build.
+    # The source code will be mounted at runtime.
+    requirements.txt /requirements.txt
 
 %environment
-    # Set environment variables inside the container
+    # Set standard environment variables inside the container
     export LC_ALL=C.UTF-8
     export LANG=C.UTF-8
     export PYTHONUNBUFFERED=1
-
-    # Add our application directory to the Python path
-    export PYTHONPATH=/opt/app:$PYTHONPATH
-
-    # Set the working directory for when we shell into the container
-    export APPTAINER_WORKINGDIR=/opt/app
 
 %post
     # Commands run once inside the container during the build process
@@ -40,9 +33,9 @@ From: python:3.9-slim-bookworm
     echo "Installing PyTorch for CUDA 11.8..."
     pip install --no-cache-dir torch==2.3.0 torchvision==2.4.0 torchaudio==2.3.0 --index-url https://download.pytorch.org/whl/cu118
 
-    # Install other Python packages from requirements.txt
-    echo "Installing Python requirements from /opt/app/requirements.txt..."
-    pip install --no-cache-dir -r /opt/app/requirements.txt
+    # Install other Python packages from the requirements.txt at the root
+    echo "Installing Python requirements from /requirements.txt..."
+    pip install --no-cache-dir -r /requirements.txt
 
     # --- NLTK Data Download ---
     echo "Downloading NLTK data..."
@@ -59,5 +52,5 @@ From: python:3.9-slim-bookworm
    # This script runs when you execute `apptainer run <sif_file>`
    echo "Italian LLM Training Environment Container"
    echo "-------------------------------------------"
-   echo "To run training, use 'apptainer exec <sif_file> python -m src.train [ARGS]...'"
-   echo "To get an interactive shell, use 'apptainer shell <sif_file>'"
+   echo "This container provides the environment. Mount your project code to run it."
+   echo "Example: apptainer exec --nv --bind .:/workspace <sif_file> python -m src.train --help"
