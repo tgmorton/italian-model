@@ -6,7 +6,7 @@ train_dataset_path: "data/tokenized/10M/train"
 tokenizer_path: "tokenizer/10M"
 model_arch_type: "gpt2"
 train_from_scratch: true
-model_size_tag: "gpt2-10m"
+model_size_tag: "gpt2-100m"
 
 # --- Training Hyperparameters ---
 num_train_epochs: 1
@@ -19,7 +19,7 @@ lr_scheduler_type: "cosine"
 num_warmup_steps: 100
 
 # --- Logging & Saving ---
-logging_steps: 1
+logging_steps: 5
 save_steps: 3
 
 # --- Hardware & Seed ---
