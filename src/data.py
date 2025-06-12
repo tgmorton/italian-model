@@ -40,22 +40,33 @@ def create_dataloader(
 
     orig_columns = train_dataset.column_names
 
-    block = 1024
+    block_size = 1024  # 1024
 
-    def chunk_and_flatten(example):
-        # example is a *single* row; run with batched=False
-        ids = example["input_ids"]
-        return {
-            "input_ids": [ids[i: i + block]  # → list of LISTS → new rows
-                          for i in range(0, len(ids), block)]
-        }
+    def chunk(batch):
+        new_rows = []
+        for ids in batch["input_ids"]:
+            # split into ≤1024-token blocks
+            pieces = [ids[i: i + block_size] for i in range(0, len(ids), block_size)]
+            new_rows.extend(pieces)
+        # new_rows is a flat list; return it *as* a list so HF makes new rows
+        return {"input_ids": new_rows}
+
+    orig_cols = train_dataset.column_names  # all current columns
 
     train_dataset = (
         train_dataset
-        .map(chunk_and_flatten, batched=False, remove_columns=train_dataset.column_names)
-        .flatten_indices()
-        .filter(lambda x: len(x["input_ids"]) <= block)
+        .map(
+            chunk,
+            batched=True,
+            remove_columns=orig_cols,  # drop everything except new input_ids
+            batch_size=1000,  # any value is fine
+            desc="Chunk & FLATTEN to ≤1024 tokens",
+        )
+        .filter(lambda x: len(x["input_ids"]) <= block_size,
+                desc="Guard against over-length")
     )
+
+    assert all(isinstance(tok, int) for tok in train_dataset[0]["input_ids"])
 
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
 
