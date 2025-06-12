@@ -1,8 +1,7 @@
 # src/data.py
 
-# === Imports ===
 import logging
-from typing import Any, Optional, Tuple
+from typing import Optional, Tuple
 
 from datasets import load_from_disk
 from torch.utils.data import (
@@ -13,11 +12,8 @@ from torch.utils.data import (
 )
 from transformers import DataCollatorForLanguageModeling, PreTrainedTokenizer
 
-# Placeholder for the config class we will create in the next task
 from .config import TrainingConfig
 
-
-# --- DataLoader Creation ---
 
 def create_dataloader(
         config: TrainingConfig,
@@ -26,19 +22,6 @@ def create_dataloader(
 ) -> Tuple[DataLoader, Optional[Sampler]]:
     """
     Loads a pre-processed dataset from disk and creates a DataLoader.
-
-    Args:
-        config: The training configuration object.
-        tokenizer: The tokenizer, used for the data collator.
-        is_distributed: A boolean indicating if training in DDP mode.
-
-    Returns:
-        A tuple containing the configured DataLoader and the sampler (if any).
-        The sampler is returned to allow setting the epoch in DDP mode.
-
-    Raises:
-        FileNotFoundError: If the dataset path does not exist.
-        ValueError: If the training dataset path is not specified in the config.
     """
     logger = logging.getLogger(__name__)
 
@@ -48,16 +31,15 @@ def create_dataloader(
     logger.info(f"Loading training data from: {config.train_dataset_path}")
 
     try:
-        train_dataset = load_from_disk(config.train_dataset_path)
+        # Convert the Path object to a string before passing to load_from_disk
+        train_dataset = load_from_disk(str(config.train_dataset_path))
         logger.info(f"Successfully loaded dataset with {len(train_dataset):,} samples.")
     except FileNotFoundError:
         logger.error(f"Dataset not found at path: {config.train_dataset_path}")
         raise
 
-    # Initialize the data collator. MLM is set to False for Causal LM training.
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
 
-    # Determine the sampler based on whether training is distributed
     sampler: Optional[Sampler] = None
     if is_distributed:
         sampler = DistributedSampler(
@@ -70,7 +52,6 @@ def create_dataloader(
         sampler = RandomSampler(train_dataset)
         logger.info("Using RandomSampler for training.")
 
-    # Create the DataLoader
     train_dataloader = DataLoader(
         train_dataset,
         sampler=sampler,
