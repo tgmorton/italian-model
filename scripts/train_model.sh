@@ -33,7 +33,7 @@ HOST_PROJECT_DIR="/home/AD/thmorton/italian-model"
 HOST_SIF_PATH="/home/AD/thmorton/italian-model/italian_llm_env.sif"
 
 # --- Define the experiment config file to use for this run ---
-CONFIG_FILE="configs/10M_experiment.yaml"
+CONFIG_FILE="configs/25M_experiment.yaml"
 
 # --- Preparations ---
 echo "Project Directory (Host): ${HOST_PROJECT_DIR}"
