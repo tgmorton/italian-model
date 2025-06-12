@@ -1,0 +1,63 @@
+Bootstrap: docker
+From: python:3.9-slim-bookworm
+
+%files
+    # Copy the necessary project files into the container at /opt/app
+    requirements.txt /opt/app/requirements.txt
+    src/ /opt/app/src/
+    configs/ /opt/app/configs/
+
+%environment
+    # Set environment variables inside the container
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+    export PYTHONUNBUFFERED=1
+
+    # Add our application directory to the Python path
+    export PYTHONPATH=/opt/app:$PYTHONPATH
+
+    # Set the working directory for when we shell into the container
+    export APPTAINER_WORKINGDIR=/opt/app
+
+%post
+    # Commands run once inside the container during the build process
+
+    # Update package lists and install common dependencies
+    echo "Updating packages and installing build tools..."
+    apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        git \
+        wget \
+        ca-certificates \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+    # Upgrade pip
+    echo "Upgrading pip..."
+    python3 -m pip install --upgrade pip wheel setuptools
+
+    # --- PyTorch Installation for CUDA 11.8 ---
+    echo "Installing PyTorch for CUDA 11.8..."
+    pip install --no-cache-dir torch==2.3.0 torchvision==2.4.0 torchaudio==2.3.0 --index-url https://download.pytorch.org/whl/cu118
+
+    # Install other Python packages from requirements.txt
+    echo "Installing Python requirements from /opt/app/requirements.txt..."
+    pip install --no-cache-dir -r /opt/app/requirements.txt
+
+    # --- NLTK Data Download ---
+    echo "Downloading NLTK data..."
+    python3 -m nltk.downloader punkt
+
+    echo "Build post-install complete."
+
+%labels
+    Author Thomas Morton
+    Version 1.0
+    Python_Version 3.9
+
+%runscript
+   # This script runs when you execute `apptainer run <sif_file>`
+   echo "Italian LLM Training Environment Container"
+   echo "-------------------------------------------"
+   echo "To run training, use 'apptainer exec <sif_file> python -m src.train [ARGS]...'"
+   echo "To get an interactive shell, use 'apptainer shell <sif_file>'"

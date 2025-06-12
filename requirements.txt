@@ -1,0 +1,18 @@
+# Python package requirements for the Italian-Model project
+# PyTorch is installed separately in the definition file to ensure CUDA compatibility.
+
+# Core NLP/ML libraries
+transformers==4.41.2
+datasets==2.19.2
+sentencepiece==0.2.0
+protobuf==4.25.3
+
+# Data validation and CLI
+pydantic==2.7.4
+typer[all]==0.12.3
+pyyaml==6.0.1
+
+# Utilities
+tqdm==4.66.4
+numpy==1.26.4
+nltk==3.8.1
