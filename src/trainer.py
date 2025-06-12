@@ -28,15 +28,16 @@ class Trainer:
     """
 
     def __init__(
-            self,
-            config: TrainingConfig,
-            model: Union[PreTrainedModel, DDP],
-            optimizer: Optimizer,
-            lr_scheduler: _LRScheduler,
-            train_dataloader: DataLoader,
-            train_sampler: Optional[Sampler],
-            device: torch.device,
-            tokenizer: PreTrainedTokenizer,
+        self,
+        config: TrainingConfig,
+        model: Union[PreTrainedModel, DDP],
+        optimizer: Optimizer,
+        lr_scheduler: _LRScheduler,
+        train_dataloader: DataLoader,
+        train_sampler: Optional[Sampler],
+        device: torch.device,
+        tokenizer: PreTrainedTokenizer,
+        num_training_steps: int,
     ):
         self.config = config
         self.model = model
@@ -46,6 +47,7 @@ class Trainer:
         self.train_sampler = train_sampler
         self.device = device
         self.tokenizer = tokenizer
+        self.num_training_steps = num_training_steps
 
         self.logger = logging.getLogger(__name__)
         self.scaler = GradScaler(enabled=self.config.use_amp)
@@ -214,7 +216,8 @@ class Trainer:
         num_epochs = self.config.num_train_epochs
 
         progress_bar = tqdm(
-            range(max_steps if max_steps > 0 else num_epochs * len(self.train_dataloader)),
+            total=self.num_training_steps,  # Use the correct total number of optimizer steps
+            initial=self.global_step,  # Start the bar from the current global step (for resuming)
             disable=not self.is_main_process,
             desc="Training"
         )

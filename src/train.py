@@ -115,20 +115,27 @@ def main(
     if config.max_steps > 0:
         num_training_steps = config.max_steps
     else:
-        num_update_steps_per_epoch = math.ceil(len(train_dataloader) / config.gradient_accumulation_steps)
-        num_training_steps = config.num_train_epochs * num_update_steps_per_epoch
+        num_optimizer_steps_per_epoch = math.ceil(len(train_dataloader) / config.gradient_accumulation_steps)
+        num_training_steps = config.num_train_epochs * num_optimizer_steps_per_epoch
 
-    optimizer, lr_scheduler = create_optimizer_and_scheduler(model=model, config=config,
-                                                             num_training_steps=num_training_steps)
+    optimizer, lr_scheduler = create_optimizer_and_scheduler(model=model, config=config, num_training_steps=num_training_steps)
 
     # 5. Handle DDP
     if is_distributed:
         model = DDP(model, device_ids=[rank])
 
     # 6. Instantiate and Run Trainer
-    trainer = Trainer(config=config, model=model, optimizer=optimizer, lr_scheduler=lr_scheduler,
-                      train_dataloader=train_dataloader, train_sampler=train_sampler, device=device,
-                      tokenizer=tokenizer)
+    trainer = Trainer(
+        config=config,
+        model=model,
+        optimizer=optimizer,
+        lr_scheduler=lr_scheduler,
+        train_dataloader=train_dataloader,
+        train_sampler=train_sampler,
+        device=device,
+        tokenizer=tokenizer,
+        num_training_steps=num_training_steps  # Pass the correct total number of steps
+    )
 
     try:
         trainer.train()
