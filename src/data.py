@@ -43,18 +43,22 @@ def create_dataloader(
 
     def chunk(example):
         ids = example["input_ids"]
-        # Split into 1024-token blocks
-        return {"input_ids": [ids[i:i + chunk_size] for i in range(0, len(ids), chunk_size)]}
+        chunk_size = tokenizer.model_max_length  # 1024
+        # produce a list of chunks
+        chunks = [ids[i: i + chunk_size] for i in range(0, len(ids), chunk_size)]
+        return {"input_ids": chunks}
 
     train_dataset = (
         train_dataset
-        .map(chunk, batched=False)
-        .flatten_nesting()
+        .map(
+            chunk,
+            batched=True,  # <-- each *batch* is a list of examples
+            remove_columns=train_dataset.column_names,  # drop the original long entry
+            desc="Chunking sequences to ≤1024 tokens",
+        )
+        # optional safety net:
+        .filter(lambda x: len(x["input_ids"]) <= tokenizer.model_max_length)
     )
-
-    # Safety net: drop anything that is still too long
-    train_dataset = train_dataset.filter(lambda x: len(x["input_ids"]) <= max_len)
-    # ------------------------------------------------------------------
 
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
 
