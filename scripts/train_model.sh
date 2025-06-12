@@ -52,7 +52,7 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 # Execute the training script inside the container
 # --nv: Enables NVIDIA GPU access
 # --bind: Mounts the project directory into /workspace inside the container
-srun apptainer exec --nv \
+srun singularity exec --nv \
     --bind "${HOST_PROJECT_DIR}":/workspace \
     "${HOST_SIF_PATH}" \
     bash -c "cd /workspace && python -m src.train --config-file ${CONFIG_FILE}"
