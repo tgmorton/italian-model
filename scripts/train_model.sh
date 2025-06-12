@@ -30,7 +30,7 @@ module load singularity/4.1.1 cuda/11.8
 # --- Define Paths ---
 # !!! IMPORTANT: UPDATE THESE PATHS TO MATCH YOUR ENVIRONMENT !!!
 HOST_PROJECT_DIR="~/italian-model"
-HOST_SIF_PATH="~/italian-model/italian_model.sif"
+HOST_SIF_PATH="~/italian-model/italian_llm_env.sif"
 
 # --- Define the experiment config file to use for this run ---
 CONFIG_FILE="configs/10M_experiment.yaml"
