@@ -7,8 +7,8 @@
 #SBATCH --mem=64G
 #SBATCH --gres=gpu:1
 #SBATCH --time=7-0:00:00                # Time limit (D-HH:MM:SS)
-#SBATCH --output=logs/%x-%j.out         # Standard output log
-#SBATCH --error=logs/%x-%j.err          # Standard error log
+#SBATCH --output=../logs/%x-%j.out         # Standard output log
+#SBATCH --error=../logs/%x-%j.err          # Standard error log
 
 # Exit on any error
 set -e
