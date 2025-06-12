@@ -38,31 +38,23 @@ def create_dataloader(
         logger.error(f"Dataset not found at path: {config.train_dataset_path}")
         raise
 
-    max_len = tokenizer.model_max_length  # 1024 for GPT-2
     orig_columns = train_dataset.column_names
 
-    chunk_size = tokenizer.model_max_length  # 1024
+    block = 1024
 
-    def chunk(batch):
-        """Split each example into ≤1024-token chunks and *flatten* them."""
-        new_rows = []
-        for ids in batch["input_ids"]:
-            pieces = [ids[i: i + chunk_size] for i in range(0, len(ids), chunk_size)]
-            new_rows.extend(pieces)
-        return {"input_ids": new_rows}  # len(new_rows) == #new examples
+    def chunk_and_flatten(example):
+        # example is a *single* row; run with batched=False
+        ids = example["input_ids"]
+        return {
+            "input_ids": [ids[i: i + block]  # → list of LISTS → new rows
+                          for i in range(0, len(ids), block)]
+        }
 
     train_dataset = (
         train_dataset
-        .map(  # ⭐ batched=True makes HF flatten for us
-            chunk,
-            batched=True,
-            remove_columns=orig_columns,  # drop the original long seq
-            desc="Chunking to ≤1024 tokens",
-        )
-        .filter(  # safety net: nothing above the limit
-            lambda x: len(x["input_ids"]) <= chunk_size,
-            desc="Filter oversize samples",
-        )
+        .map(chunk_and_flatten, batched=False, remove_columns=train_dataset.column_names)
+        .flatten_indices()
+        .filter(lambda x: len(x["input_ids"]) <= block)
     )
 
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
