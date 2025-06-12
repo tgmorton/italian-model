@@ -39,25 +39,30 @@ def create_dataloader(
         raise
 
     max_len = tokenizer.model_max_length  # 1024 for GPT-2
-    chunk_size = max_len
+    orig_columns = train_dataset.column_names
 
-    def chunk(example):
-        ids = example["input_ids"]
-        chunk_size = tokenizer.model_max_length  # 1024
-        # produce a list of chunks
-        chunks = [ids[i: i + chunk_size] for i in range(0, len(ids), chunk_size)]
-        return {"input_ids": chunks}
+    chunk_size = tokenizer.model_max_length  # 1024
+
+    def chunk(batch):
+        """Split each example into ≤1024-token chunks and *flatten* them."""
+        new_rows = []
+        for ids in batch["input_ids"]:
+            pieces = [ids[i: i + chunk_size] for i in range(0, len(ids), chunk_size)]
+            new_rows.extend(pieces)
+        return {"input_ids": new_rows}  # len(new_rows) == #new examples
 
     train_dataset = (
         train_dataset
-        .map(
+        .map(  # ⭐ batched=True makes HF flatten for us
             chunk,
-            batched=True,  # <-- each *batch* is a list of examples
-            remove_columns=train_dataset.column_names,  # drop the original long entry
-            desc="Chunking sequences to ≤1024 tokens",
+            batched=True,
+            remove_columns=orig_columns,  # drop the original long seq
+            desc="Chunking to ≤1024 tokens",
         )
-        # optional safety net:
-        .filter(lambda x: len(x["input_ids"]) <= tokenizer.model_max_length)
+        .filter(  # safety net: nothing above the limit
+            lambda x: len(x["input_ids"]) <= chunk_size,
+            desc="Filter oversize samples",
+        )
     )
 
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
