@@ -3,7 +3,7 @@
 import logging
 from typing import Optional, Tuple
 
-from datasets import load_from_disk, ConstantLengthDataset
+from datasets import load_from_disk
 from torch.utils.data import (
     DataLoader,
     DistributedSampler,
@@ -21,40 +21,57 @@ def create_dataloader(
         is_distributed: bool,
 ) -> Tuple[DataLoader, Optional[Sampler]]:
     """
-    Loads a tokenized dataset, processes it into constant-length chunks,
-    and creates a DataLoader.
+    Loads a pre-processed dataset from disk and creates a DataLoader.
     """
     logger = logging.getLogger(__name__)
 
+    if not config.train_dataset_path:
+        raise ValueError("The `train_dataset_path` must be specified in the configuration.")
+
     logger.info(f"Loading training data from: {config.train_dataset_path}")
-    train_dataset = load_from_disk(str(config.train_dataset_path))
-    logger.info(f"Original dataset has {len(train_dataset):,} samples.")
 
-    # --- NEW: Process into constant length chunks ---
-    # Use the model's max length from its config (e.g., 1024) as the sequence length.
-    # We get this from the tokenizer, which is linked to the model config.
-    seq_length = tokenizer.model_max_length
-    logger.info(f"Chunking dataset into constant-length sequences of {seq_length} tokens.")
+    try:
+        # Convert the Path object to a string before passing to load_from_disk
+        train_dataset = load_from_disk(str(config.train_dataset_path))
+        logger.info(f"Successfully loaded dataset with {len(train_dataset):,} samples.")
+    except FileNotFoundError:
+        logger.error(f"Dataset not found at path: {config.train_dataset_path}")
+        raise
 
-    chunked_dataset = ConstantLengthDataset(
-        tokenizer,
-        train_dataset,
-        formatting_func=lambda x: x["input_ids"],  # Assumes your dataset has an "input_ids" column
-        seq_length=seq_length,
+    max_len = tokenizer.model_max_length  # 1024 for GPT-2
+    chunk_size = max_len
+
+    def chunk(example):
+        ids = example["input_ids"]
+        # Split into 1024-token blocks
+        return {"input_ids": [ids[i:i + chunk_size] for i in range(0, len(ids), chunk_size)]}
+
+    train_dataset = (
+        train_dataset
+        .map(chunk, batched=False)
+        .flatten_nesting()
     )
-    logger.info(f"New chunked dataset has {len(chunked_dataset):,} samples.")
-    # --- END NEW SECTION ---
+
+    # Safety net: drop anything that is still too long
+    train_dataset = train_dataset.filter(lambda x: len(x["input_ids"]) <= max_len)
+    # ------------------------------------------------------------------
 
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
 
     sampler: Optional[Sampler] = None
     if is_distributed:
-        sampler = DistributedSampler(chunked_dataset, shuffle=True, seed=config.seed)
+        sampler = DistributedSampler(
+            train_dataset,
+            shuffle=True,
+            seed=config.seed,
+        )
+        logger.info("Using DistributedSampler for training.")
     else:
-        sampler = RandomSampler(chunked_dataset)
+        sampler = RandomSampler(train_dataset)
+        logger.info("Using RandomSampler for training.")
 
     train_dataloader = DataLoader(
-        chunked_dataset,  # Use the new chunked dataset
+        train_dataset,
         sampler=sampler,
         batch_size=config.per_device_train_batch_size,
         num_workers=config.num_workers,
