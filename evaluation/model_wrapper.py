@@ -127,6 +127,8 @@ class ModelWrapper:
         # We assign it 0.0 for practical purposes.
         full_surprisals = [0.0] + surprisals
 
+        tokens = self.tokenizer.convert_ids_to_tokens(input_ids.squeeze().tolist())
+
         # Decode the tokens back to strings for readability
         tokens = [
             self.tokenizer.decode(token_id) for token_id in input_ids.squeeze().tolist()

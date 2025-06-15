@@ -30,7 +30,8 @@ class SurprisalEvaluation(EvaluationCase):
         full_text = f"{context.strip()} {target.strip()}"
         tokens, surprisals = self.model_wrapper.get_surprisals(full_text)
 
-        hotspot_tokens = self.model_wrapper.tokenizer.tokenize(hotspot.strip())
+        # CORRECTED: Do not strip whitespace from the hotspot string.
+        hotspot_tokens = self.model_wrapper.tokenizer.tokenize(hotspot)
         start_idx, end_idx = find_sublist_indices(tokens, hotspot_tokens)
 
         hotspot_results = {}
