@@ -3,13 +3,13 @@
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-from typing import List, Dict, Tuple
+from typing import List, Dict
 
 from ..eval_case import EvaluationCase
 from ..model_wrapper import ModelWrapper
 
 
-def find_sublist_indices(main_list: List, sub_list: List) -> Tuple[int, int]:
+def find_sublist_indices(main_list: List, sub_list: List) -> tuple[int, int]:
     """Finds the start and end indices of a sublist within a main list."""
     for i in range(len(main_list) - len(sub_list) + 1):
         if main_list[i:i + len(sub_list)] == sub_list:
@@ -30,7 +30,6 @@ class SurprisalEvaluation(EvaluationCase):
         full_text = f"{context.strip()} {target.strip()}"
         tokens, surprisals = self.model_wrapper.get_surprisals(full_text)
 
-        # Tokenize hotspot separately to find its representation
         hotspot_tokens = self.model_wrapper.tokenizer.tokenize(hotspot.strip())
         start_idx, end_idx = find_sublist_indices(tokens, hotspot_tokens)
 
@@ -48,9 +47,13 @@ class SurprisalEvaluation(EvaluationCase):
             "hotspot_analysis": hotspot_results
         }
 
-    def run(self, data: pd.DataFrame) -> List[Dict]:
+    # CORRECTED: Added the 'source_filename' parameter to the method signature.
+    def run(self, data: pd.DataFrame, source_filename: str = "unknown") -> List[Dict]:
+        """
+        Runs the evaluation on the provided data.
+        """
         results = []
-        for _, row in tqdm(data.iterrows(), total=len(data), desc="Processing stimuli"):
+        for _, row in tqdm(data.iterrows(), total=len(data), desc=f"Processing {source_filename}"):
             null_results = self._analyze_sentence(
                 row["context"], row["null_sentence"], row["hotspot"]
             )
@@ -58,7 +61,6 @@ class SurprisalEvaluation(EvaluationCase):
                 row["context"], row["overt_sentence"], row["hotspot"]
             )
 
-            # Calculate difference score
             diff_score = None
             if "avg_surprisal" in null_results["hotspot_analysis"] and \
                     "avg_surprisal" in overt_results["hotspot_analysis"]:

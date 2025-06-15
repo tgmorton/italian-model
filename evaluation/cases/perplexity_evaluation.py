@@ -7,6 +7,8 @@ from datasets import load_from_disk
 from tqdm import tqdm
 from pathlib import Path
 from typing import List, Dict
+# CORRECTED: Import the DataCollatorWithPadding
+from transformers import DataCollatorWithPadding
 
 from ..eval_case import EvaluationCase
 from ..model_wrapper import ModelWrapper
@@ -27,40 +29,45 @@ class PerplexityEvaluation(EvaluationCase):
         try:
             dataset = load_from_disk(str(data_path))
         except Exception as e:
-            raise FileNotFoundError(
-                f"Could not load dataset from {data_path}. Ensure it's a valid dataset directory. Error: {e}")
+            raise FileNotFoundError(f"Could not load dataset from {data_path}. Error: {e}")
 
         if max_samples:
             dataset = dataset.select(range(min(max_samples, len(dataset))))
 
-        # CORRECTED: Only request the 'input_ids' column, which is guaranteed to exist.
-        dataset.set_format(type="torch", columns=["input_ids"])
-        dataloader = DataLoader(dataset, batch_size=batch_size)
+        # CORRECTED: Remove the manual set_format call. The DataCollator will handle this.
+
+        # CORRECTED: Instantiate a data collator to handle padding.
+        data_collator = DataCollatorWithPadding(tokenizer=self.model_wrapper.tokenizer)
+
+        # CORRECTED: Pass the collator to the DataLoader.
+        dataloader = DataLoader(dataset, batch_size=batch_size, collate_fn=data_collator)
 
         total_loss = 0
-        total_tokens = 0
+        n_samples = 0
 
         print(f"Calculating perplexity on {len(dataset)} samples from {data_path}...")
         for batch in tqdm(dataloader, desc="Calculating Perplexity"):
+            # The collator now produces batches with 'input_ids' and 'attention_mask'
             batch = {k: v.to(self.model_wrapper.device) for k, v in batch.items()}
             with torch.no_grad():
-                # The model will auto-create an attention mask if one is not provided in the batch
                 outputs = self.model_wrapper.model(**batch, labels=batch["input_ids"])
 
+            # The model's loss is the average loss over the batch. We multiply by the
+            # number of samples in the batch to get a weighted sum.
             loss = outputs.loss
-            num_tokens_in_batch = batch["input_ids"].numel()
-            total_loss += loss.item() * num_tokens_in_batch
-            total_tokens += num_tokens_in_batch
+            batch_size = batch["input_ids"].size(0)
+            total_loss += loss.item() * batch_size
+            n_samples += batch_size
 
-        if total_tokens == 0:
-            return [{"error": "No tokens were processed."}]
+        if n_samples == 0:
+            return [{"error": "No samples were processed."}]
 
-        avg_loss = total_loss / total_tokens
+        # Calculate the overall average loss and perplexity
+        avg_loss = total_loss / n_samples
         perplexity = np.exp(avg_loss)
 
         return [{
             "perplexity": perplexity,
             "loss": avg_loss,
-            "num_samples_processed": len(dataset),
-            "num_tokens_processed": total_tokens,
+            "num_samples_processed": n_samples,
         }]
