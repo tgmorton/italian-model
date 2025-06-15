@@ -87,51 +87,31 @@ class ModelWrapper:
     def get_surprisals(self, text: str) -> Tuple[List[str], List[float]]:
         """
         Calculates the token-level surprisal for a given string of text.
-
-        Surprisal is the negative log probability of a token given the preceding context,
-        i.e., -log(P(token_i | token_0, ..., token_{i-1})).
-
-        Args:
-            text (str): The input text.
-
-        Returns:
-            A tuple containing:
-            - A list of tokens (strings).
-            - A corresponding list of surprisal values (floats).
-              The first token's surprisal is defined as 0.0.
         """
-        # Tokenize the input text
+        # We tokenize twice: once for the model, once to get raw token strings for matching.
+        # This is the most reliable way to ensure the strings match what `tokenize` produces.
+        raw_tokens = self.tokenizer.tokenize(text)
+
         inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
         input_ids = inputs.input_ids
 
-        # Get the model's logits (predictions)
+        # We must ensure the number of tokens matches the number of input_ids.
+        # The high-level tokenizer call may add special tokens (like <s>) that .tokenize() does not.
+        # We will use convert_ids_to_tokens as the most reliable source of truth.
+        tokens_for_matching = self.tokenizer.convert_ids_to_tokens(input_ids.squeeze().tolist())
+
         outputs = self.model(**inputs, labels=input_ids)
         logits = outputs.logits
 
-        # The cross_entropy loss function calculates -log(softmax(logits)).
-        # By using reduction='none', we get the loss for each token individually.
         loss_fct = torch.nn.CrossEntropyLoss(reduction="none")
 
-        # Shift logits and labels for next-token prediction
-        # The logits at position i are used to predict the token at position i+1
         shift_logits = logits[..., :-1, :].contiguous()
         shift_labels = input_ids[..., 1:].contiguous()
 
-        # Calculate loss (surprisal) for each token
         surprisals_tensor = loss_fct(shift_logits.view(-1, self.model.config.vocab_size), shift_labels.view(-1))
 
-        # Convert tensor to a list of floats
         surprisals = surprisals_tensor.cpu().numpy().tolist()
 
-        # The first token has no preceding context, so its surprisal is undefined.
-        # We assign it 0.0 for practical purposes.
         full_surprisals = [0.0] + surprisals
 
-        tokens = self.tokenizer.convert_ids_to_tokens(input_ids.squeeze().tolist())
-
-        # Decode the tokens back to strings for readability
-        tokens = [
-            self.tokenizer.decode(token_id) for token_id in input_ids.squeeze().tolist()
-        ]
-
-        return tokens, full_surprisals
+        return tokens_for_matching, full_surprisals

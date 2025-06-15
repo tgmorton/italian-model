@@ -18,29 +18,36 @@ def find_sublist_indices(main_list: List, sub_list: List) -> tuple[int, int]:
 
 
 class SurprisalEvaluation(EvaluationCase):
-    """
-    A concrete evaluation case for calculating surprisal on null vs. overt pronouns.
-    """
-
-    def __init__(self, model_wrapper: ModelWrapper):
-        super().__init__(model_wrapper)
+    # ... (__init__ is the same) ...
 
     def _analyze_sentence(self, context: str, target: str, hotspot: str) -> Dict:
         """Analyzes a single sentence (context + target) for surprisal."""
         full_text = f"{context.strip()} {target.strip()}"
         tokens, surprisals = self.model_wrapper.get_surprisals(full_text)
 
-        # CORRECTED: Do not strip whitespace from the hotspot string.
         hotspot_tokens = self.model_wrapper.tokenizer.tokenize(hotspot)
+
+        # =================================================================
+        # DEBUG LOGGING - This will print to your .out file for each item
+        # =================================================================
+        print("\n--- HOTSPOT DEBUGGING ---")
+        print(f"Searching for needle in haystack...")
+        print(f"  HAYSTACK ({len(tokens)} tokens): {tokens}")
+        print(f"  NEEDLE   ({len(hotspot_tokens)} tokens): {hotspot_tokens}")
+        # =================================================================
+
         start_idx, end_idx = find_sublist_indices(tokens, hotspot_tokens)
 
         hotspot_results = {}
         if start_idx != -1:
+            print("  >>> SUCCESS: Hotspot found.")
             hotspot_surprisals = surprisals[start_idx:end_idx]
             hotspot_results = {
                 "avg_surprisal": np.mean(hotspot_surprisals).item(),
                 "num_tokens": len(hotspot_surprisals),
             }
+        else:
+            print("  >>> FAILED: Hotspot not found.")
 
         return {
             "full_tokens": tokens,
