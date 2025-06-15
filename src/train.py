@@ -26,6 +26,7 @@ app = typer.Typer(add_completion=False, pretty_exceptions_show_locals=False)
 def create_optimizer_and_scheduler(
         model: PreTrainedModel, config: TrainingConfig, num_training_steps: int
 ) -> Tuple[Optimizer, _LRScheduler]:
+    # ... (This function remains unchanged)
     logger = logging.getLogger(__name__)
     no_decay = ["bias", "LayerNorm.weight", "layernorm.weight"]
     optimizer_grouped_parameters = [
@@ -102,6 +103,7 @@ def main(
         logger.info("***** Starting Training *****")
         logger.info(f"  Final Config: {config.model_dump_json(indent=2)}")
 
+    # ... (The rest of the main function is exactly the same)
 
     # 3. Create Model, Tokenizer, and Data
     model, tokenizer = create_model_and_tokenizer(config)
