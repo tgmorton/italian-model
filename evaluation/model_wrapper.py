@@ -52,14 +52,32 @@ class ModelWrapper:
         return tokenizer
 
     def _load_model(self) -> PreTrainedModel:
-        """Loads the model, resizes embeddings if needed, and moves to device."""
+        """
+        Loads the model's config, updates vocab size to match the tokenizer,
+        and then loads the model weights into the corrected architecture.
+        """
         print(f"Loading model from: {self.checkpoint_path}")
-        model = AutoModelForCausalLM.from_pretrained(self.checkpoint_path)
 
-        # IMPORTANT: Resize model embeddings if the tokenizer was expanded (e.g., by adding a new pad token).
-        if len(self.tokenizer) > model.config.vocab_size:
-            print(f"  > Resizing model token embeddings from {model.config.vocab_size} to {len(self.tokenizer)}")
-            model.resize_token_embeddings(len(self.tokenizer))
+        # 1. Load the configuration from the checkpoint.
+        model_config = AutoConfig.from_pretrained(self.checkpoint_path)
+
+        # 2. Check for and fix vocabulary size mismatch BEFORE loading the model weights.
+        tokenizer_vocab_size = len(self.tokenizer)
+        if model_config.vocab_size != tokenizer_vocab_size:
+            print(
+                f"  > Vocab size mismatch detected. Model config: {model_config.vocab_size}, Tokenizer: {tokenizer_vocab_size}.")
+            print(f"  > Updating model config vocab_size to {tokenizer_vocab_size} before loading weights.")
+            model_config.vocab_size = tokenizer_vocab_size
+
+        # 3. Load the model weights using the (potentially corrected) configuration.
+        #    This forces the model to have the correct output dimensions from the start.
+        model = AutoModelForCausalLM.from_pretrained(
+            self.checkpoint_path,
+            config=model_config
+        )
+
+        # The previous resize_token_embeddings call is no longer needed
+        # as this new method is more robust.
 
         model.to(self.device)
         model.eval()
