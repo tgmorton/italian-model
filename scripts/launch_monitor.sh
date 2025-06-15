@@ -9,8 +9,8 @@
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
 #SBATCH --time=7-0:00:00
-#SBATCH --output=../logs/%x_%j.out
-#SBATCH --error=../logs/%x_%j.err
+#SBATCH --output=logs/%x_%j.out
+#SBATCH --error=logs/%x_%j.err
 
 # Exit on error
 set -e
@@ -34,25 +34,28 @@ echo "Loading system modules..."
 module load singularity/4.1.1 cuda/11.8 # Assumed versions
 
 # --- Define Host and Container Paths ---
-HOST_PROJECT_DIR="/home/AD/thmorton/italian-model"
+HOST_PROJECT_DIR=$(pwd)
 HOST_SIF_PATH="${HOST_PROJECT_DIR}/italian_llm_env.sif"
 HOST_DATA_DIR="${HOST_PROJECT_DIR}/data"
 HOST_MODELS_DIR="${HOST_PROJECT_DIR}/models"
 HOST_RESULTS_DIR="${HOST_PROJECT_DIR}/results"
 HOST_LOGS_DIR="${HOST_PROJECT_DIR}/logs"
-# CORRECTED: Define tokenizer host path explicitly
 HOST_TOKENIZER_DIR="${HOST_PROJECT_DIR}/tokenizer"
+# CORRECTED: Point to the actual surprisal data directory
+HOST_SURPRISAL_DIR="${HOST_PROJECT_DIR}/evaluation/data/italian_null_subject"
 
 CONTAINER_WORKSPACE="/workspace"
 CONTAINER_DATA_DIR="/data"
 CONTAINER_MODELS_DIR="/models"
 CONTAINER_RESULTS_DIR="/results"
-# CORRECTED: Define tokenizer container path explicitly
 CONTAINER_TOKENIZER_DIR="/workspace/tokenizer"
+# CORRECTED: Define a new container path for the surprisal data
+CONTAINER_SURPRISAL_DIR="/surprisal_data"
 
 # --- Preparations ---
 echo "Project Directory (Host): ${HOST_PROJECT_DIR}"
 if [ ! -d "${HOST_MODELS_DIR}/${MODEL_SIZE_TAG}" ]; then echo "ERROR: Target model directory not found at ${HOST_MODELS_DIR}/${MODEL_SIZE_TAG}"; exit 1; fi
+if [ ! -d "${HOST_SURPRISAL_DIR}" ]; then echo "ERROR: Surprisal data directory not found at ${HOST_SURPRISAL_DIR}"; exit 1; fi
 mkdir -p "${HOST_RESULTS_DIR}"
 mkdir -p "${HOST_LOGS_DIR}"
 
@@ -64,12 +67,13 @@ singularity exec --nv \
     -B "${HOST_DATA_DIR}":"${CONTAINER_DATA_DIR}" \
     -B "${HOST_MODELS_DIR}":"${CONTAINER_MODELS_DIR}" \
     -B "${HOST_RESULTS_DIR}":"${CONTAINER_RESULTS_DIR}" \
+    -B "${HOST_SURPRISAL_DIR}":"${CONTAINER_SURPRISAL_DIR}" \
     "${HOST_SIF_PATH}" \
     bash -c "cd ${CONTAINER_WORKSPACE} && python3 -m evaluation.monitor \
         --model_parent_dir \"${CONTAINER_MODELS_DIR}/${MODEL_SIZE_TAG}\" \
         --output_base_dir \"${CONTAINER_RESULTS_DIR}\" \
         --tokenizer_base_dir \"${CONTAINER_TOKENIZER_DIR}\" \
-        --surprisal_data_dir \"${CONTAINER_DATA_DIR}/eval\" \
+        --surprisal_data_dir \"${CONTAINER_SURPRISAL_DIR}\" \
         --perplexity_data_base_path \"${CONTAINER_DATA_DIR}/tokenized\""
 
 # === Job Completion ===
