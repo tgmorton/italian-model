@@ -1,10 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=italian-llm-lr-sweep    # A descriptive job name
-#SBATCH --partition=general_gpu_a5000      # The general_gpu_a500 partition
+#SBATCH --partition=general_gpu_p6000      # The general_gpu_a500 partition
 #SBATCH --array=0-5                        # Create a job array for the learning rate indices
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=12
+#SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --time=7-0:00:00                   # Time limit (D-HH:MM:SS)
 #SBATCH --output=../logs/%x-%A_%a.out      # Unique standard output log for each array task

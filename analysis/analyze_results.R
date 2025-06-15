@@ -13,7 +13,7 @@ suppressPackageStartupMessages(library(svglite)) # For saving plots
 
 # --- !! USER CONFIGURATION !! ---
 # Set the model size tag and directories you want to analyze here.
-model_tag <- "10M" # <--- EDIT THIS (e.g., "25M", "50M")
+model_tag <- "100M" # <--- EDIT THIS (e.g., "25M", "50M")
 analysis_base_dir <- "analysis"
 # --------------------------------
 
