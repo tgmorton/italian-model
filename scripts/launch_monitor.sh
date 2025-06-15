@@ -9,8 +9,8 @@
 #SBATCH --mem=24G
 #SBATCH --gres=gpu:1
 #SBATCH --time=7-0:00:00
-#SBATCH --output=../logs/%x_%j.out
-#SBATCH --error=../logs/%x_%j.err
+#SBATCH --output=logs/%x_%j.out
+#SBATCH --error=logs/%x_%j.err
 
 # Exit on error
 set -e
@@ -34,18 +34,21 @@ echo "Loading system modules..."
 module load singularity/4.1.1 cuda/11.8 # Assumed versions
 
 # --- Define Host and Container Paths ---
-# Assumes this script is run from the project's root directory.
 HOST_PROJECT_DIR="/home/AD/thmorton/italian-model"
-HOST_SIF_PATH="${HOST_PROJECT_DIR}/italian_llm_env.sif" # <<< IMPORTANT: UPDATE SIF FILENAME IF NEEDED
+HOST_SIF_PATH="${HOST_PROJECT_DIR}/italian_llm_env.sif"
 HOST_DATA_DIR="${HOST_PROJECT_DIR}/data"
 HOST_MODELS_DIR="${HOST_PROJECT_DIR}/models"
 HOST_RESULTS_DIR="${HOST_PROJECT_DIR}/results"
 HOST_LOGS_DIR="${HOST_PROJECT_DIR}/logs"
+# CORRECTED: Define tokenizer host path explicitly
+HOST_TOKENIZER_DIR="${HOST_PROJECT_DIR}/tokenizer"
 
 CONTAINER_WORKSPACE="/workspace"
 CONTAINER_DATA_DIR="/data"
 CONTAINER_MODELS_DIR="/models"
 CONTAINER_RESULTS_DIR="/results"
+# CORRECTED: Define tokenizer container path explicitly
+CONTAINER_TOKENIZER_DIR="/workspace/tokenizer"
 
 # --- Preparations ---
 echo "Project Directory (Host): ${HOST_PROJECT_DIR}"
@@ -65,6 +68,7 @@ singularity exec --nv \
     bash -c "cd ${CONTAINER_WORKSPACE} && python3 -m evaluation.monitor \
         --model_parent_dir \"${CONTAINER_MODELS_DIR}/${MODEL_SIZE_TAG}\" \
         --output_base_dir \"${CONTAINER_RESULTS_DIR}\" \
+        --tokenizer_base_dir \"${CONTAINER_TOKENIZER_DIR}\" \
         --surprisal_data_dir \"${CONTAINER_DATA_DIR}/eval\" \
         --perplexity_data_base_path \"${CONTAINER_DATA_DIR}/tokenized\""
 
