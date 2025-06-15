@@ -17,33 +17,28 @@ class SurprisalEvaluation(EvaluationCase):
     def __init__(self, model_wrapper: ModelWrapper):
         super().__init__(model_wrapper)
 
-    # CORRECTED: This method now uses character offsets for robust hotspot matching.
     def _analyze_sentence(self, context: str, target: str, hotspot: str) -> Dict:
         """Analyzes a single sentence (context + target) for surprisal."""
-        # We need to handle context and target separately to find character offsets correctly.
         clean_context = context.strip()
         clean_target = target.strip()
 
-        # The full text sent to the model includes a space between context and target.
         full_text = f"{clean_context} {clean_target}"
         tokens, surprisals, offset_mapping = self.model_wrapper.get_surprisals(full_text)
 
-        # 1. Find the character start/end of the hotspot within the *target* string.
-        hotspot_char_start_in_target = clean_target.find(hotspot)
+        # CORRECTED: Search for the stripped version of the hotspot to robustly find its position.
+        stripped_hotspot = hotspot.strip()
+        hotspot_char_start_in_target = clean_target.find(stripped_hotspot)
 
         hotspot_indices = []
         hotspot_results = {}
 
         if hotspot_char_start_in_target != -1:
-            # 2. Calculate the character start/end within the *full_text*.
-            #    This accounts for the length of the context and the space separator.
-            context_len = len(clean_context) + 1  # +1 for the space
+            context_len = len(clean_context) + 1
             hotspot_char_start_in_full = context_len + hotspot_char_start_in_target
-            hotspot_char_end_in_full = hotspot_char_start_in_full + len(hotspot)
+            # CORRECTED: Use the length of the stripped hotspot for calculating the end.
+            hotspot_char_end_in_full = hotspot_char_start_in_full + len(stripped_hotspot)
 
-            # 3. Find all tokens whose character offsets fall within the hotspot's span.
             for i, (token_start, token_end) in enumerate(offset_mapping):
-                # Check for any overlap between the token's span and the hotspot's span.
                 if token_end > hotspot_char_start_in_full and token_start < hotspot_char_end_in_full:
                     hotspot_indices.append(i)
 
@@ -52,7 +47,7 @@ class SurprisalEvaluation(EvaluationCase):
                 hotspot_results = {
                     "avg_surprisal": np.mean(hotspot_surprisals).item(),
                     "num_tokens": len(hotspot_surprisals),
-                    "tokens": [tokens[i] for i in hotspot_indices]  # Add matched tokens for debugging
+                    "tokens": [tokens[i] for i in hotspot_indices]
                 }
 
         return {
@@ -62,9 +57,7 @@ class SurprisalEvaluation(EvaluationCase):
         }
 
     def run(self, data: pd.DataFrame, source_filename: str = "unknown") -> List[Dict]:
-        """
-        Runs the evaluation on the provided data.
-        """
+        # ... (run method is unchanged) ...
         results = []
         for _, row in tqdm(data.iterrows(), total=len(data), desc=f"Processing {source_filename}"):
             null_results = self._analyze_sentence(
