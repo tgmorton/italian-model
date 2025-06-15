@@ -34,17 +34,35 @@ class ModelWrapper:
         self.model = self._load_model()
 
     def _load_tokenizer(self) -> PreTrainedTokenizer:
-        """Loads the tokenizer from the specified path."""
+        """Loads the tokenizer and ensures a padding token is set."""
         print(f"Loading tokenizer from: {self.tokenizer_path}")
         tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_path)
+
+        # CORRECTED: Add logic to set a pad_token if one doesn't exist.
+        if tokenizer.pad_token is None:
+            if tokenizer.eos_token:
+                tokenizer.pad_token = tokenizer.eos_token
+                print(f"  > tokenizer.pad_token was None. Set to eos_token: '{tokenizer.eos_token}'")
+            else:
+                # Add a new pad token if no eos token exists either
+                new_pad_token = '[PAD]'
+                tokenizer.add_special_tokens({'pad_token': new_pad_token})
+                print(f"  > tokenizer.pad_token and eos_token were None. Added new pad_token: '{new_pad_token}'")
+
         return tokenizer
 
     def _load_model(self) -> PreTrainedModel:
-        """Loads the model from the specified checkpoint and moves it to the device."""
+        """Loads the model, resizes embeddings if needed, and moves to device."""
         print(f"Loading model from: {self.checkpoint_path}")
         model = AutoModelForCausalLM.from_pretrained(self.checkpoint_path)
+
+        # IMPORTANT: Resize model embeddings if the tokenizer was expanded (e.g., by adding a new pad token).
+        if len(self.tokenizer) > model.config.vocab_size:
+            print(f"  > Resizing model token embeddings from {model.config.vocab_size} to {len(self.tokenizer)}")
+            model.resize_token_embeddings(len(self.tokenizer))
+
         model.to(self.device)
-        model.eval()  # Set model to evaluation mode
+        model.eval()
         return model
 
     @torch.no_grad()
