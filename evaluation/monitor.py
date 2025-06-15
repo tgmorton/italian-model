@@ -59,7 +59,7 @@ def main():
             # e.g., .../models/10M/checkpoint-5000 -> tokenizer is in .../tokenizer/10M
             model_size_tag = checkpoint_path.parent.name
             # The tokenizer directory is expected to be parallel to the models directory
-            tokenizer_path = checkpoint_path.parents[1] / "tokenizer" / model_size_tag
+            tokenizer_path = checkpoint_path.parents[2] / "tokenizer" / model_size_tag
 
             if not tokenizer_path.exists():
                 print(f"  [ERROR] Tokenizer not found at expected path: {tokenizer_path}. Skipping checkpoint.")
