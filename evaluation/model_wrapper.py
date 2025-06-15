@@ -2,7 +2,7 @@
 
 import torch
 from pathlib import Path
-from transformers import AutoTokenizer, AutoModelForCausalLM, PreTrainedTokenizer, PreTrainedModel
+from transformers import AutoConfig, AutoTokenizer, AutoModelForCausalLM, PreTrainedTokenizer, PreTrainedModel
 from typing import List, Tuple, Union
 
 
