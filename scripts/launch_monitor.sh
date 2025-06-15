@@ -34,7 +34,7 @@ echo "Loading system modules..."
 module load singularity/4.1.1 cuda/11.8 # Assumed versions
 
 # --- Define Host and Container Paths ---
-HOST_PROJECT_DIR=$(pwd)
+HOST_PROJECT_DIR="/home/AD/thmorton/italian-model"
 HOST_SIF_PATH="${HOST_PROJECT_DIR}/italian_llm_env.sif"
 HOST_DATA_DIR="${HOST_PROJECT_DIR}/data"
 HOST_MODELS_DIR="${HOST_PROJECT_DIR}/models"
