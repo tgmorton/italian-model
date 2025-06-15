@@ -84,21 +84,19 @@ class ModelWrapper:
         return model
 
     @torch.no_grad()
-    def get_surprisals(self, text: str) -> Tuple[List[str], List[float]]:
+    def get_surprisals(self, text: str) -> Tuple[List[str], List[float], List[Tuple[int, int]]]:
         """
-        Calculates the token-level surprisal for a given string of text.
+        Calculates token-level surprisal and returns tokens, surprisals,
+        and the character offset mapping for each token.
         """
-        # We tokenize twice: once for the model, once to get raw token strings for matching.
-        # This is the most reliable way to ensure the strings match what `tokenize` produces.
-        raw_tokens = self.tokenizer.tokenize(text)
+        # CORRECTED: Request the offset_mapping from the tokenizer.
+        inputs = self.tokenizer(text, return_tensors="pt", return_offsets_mapping=True)
 
-        inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
-        input_ids = inputs.input_ids
+        offset_mapping = inputs.pop("offset_mapping").squeeze().tolist()
+        input_ids = inputs.input_ids.to(self.device)
 
-        # We must ensure the number of tokens matches the number of input_ids.
-        # The high-level tokenizer call may add special tokens (like <s>) that .tokenize() does not.
-        # We will use convert_ids_to_tokens as the most reliable source of truth.
-        tokens_for_matching = self.tokenizer.convert_ids_to_tokens(input_ids.squeeze().tolist())
+        # Move all tensors in the inputs dict to the device
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         outputs = self.model(**inputs, labels=input_ids)
         logits = outputs.logits
@@ -111,7 +109,9 @@ class ModelWrapper:
         surprisals_tensor = loss_fct(shift_logits.view(-1, self.model.config.vocab_size), shift_labels.view(-1))
 
         surprisals = surprisals_tensor.cpu().numpy().tolist()
-
         full_surprisals = [0.0] + surprisals
 
-        return tokens_for_matching, full_surprisals
+        tokens = self.tokenizer.convert_ids_to_tokens(input_ids.squeeze().tolist())
+
+        # CORRECTED: Return the offset_mapping as well.
+        return tokens, full_surprisals, offset_mapping

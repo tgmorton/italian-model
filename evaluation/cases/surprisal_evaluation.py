@@ -9,45 +9,51 @@ from ..eval_case import EvaluationCase
 from ..model_wrapper import ModelWrapper
 
 
-def find_sublist_indices(main_list: List, sub_list: List) -> tuple[int, int]:
-    """Finds the start and end indices of a sublist within a main list."""
-    for i in range(len(main_list) - len(sub_list) + 1):
-        if main_list[i:i + len(sub_list)] == sub_list:
-            return i, i + len(sub_list)
-    return -1, -1
-
-
 class SurprisalEvaluation(EvaluationCase):
-    # ... (__init__ is the same) ...
+    """
+    A concrete evaluation case for calculating surprisal on null vs. overt pronouns.
+    """
 
+    def __init__(self, model_wrapper: ModelWrapper):
+        super().__init__(model_wrapper)
+
+    # CORRECTED: This method now uses character offsets for robust hotspot matching.
     def _analyze_sentence(self, context: str, target: str, hotspot: str) -> Dict:
         """Analyzes a single sentence (context + target) for surprisal."""
-        full_text = f"{context.strip()} {target.strip()}"
-        tokens, surprisals = self.model_wrapper.get_surprisals(full_text)
+        # We need to handle context and target separately to find character offsets correctly.
+        clean_context = context.strip()
+        clean_target = target.strip()
 
-        hotspot_tokens = self.model_wrapper.tokenizer.tokenize(hotspot)
+        # The full text sent to the model includes a space between context and target.
+        full_text = f"{clean_context} {clean_target}"
+        tokens, surprisals, offset_mapping = self.model_wrapper.get_surprisals(full_text)
 
-        # =================================================================
-        # DEBUG LOGGING - This will print to your .out file for each item
-        # =================================================================
-        print("\n--- HOTSPOT DEBUGGING ---")
-        print(f"Searching for needle in haystack...")
-        print(f"  HAYSTACK ({len(tokens)} tokens): {tokens}")
-        print(f"  NEEDLE   ({len(hotspot_tokens)} tokens): {hotspot_tokens}")
-        # =================================================================
+        # 1. Find the character start/end of the hotspot within the *target* string.
+        hotspot_char_start_in_target = clean_target.find(hotspot)
 
-        start_idx, end_idx = find_sublist_indices(tokens, hotspot_tokens)
-
+        hotspot_indices = []
         hotspot_results = {}
-        if start_idx != -1:
-            print("  >>> SUCCESS: Hotspot found.")
-            hotspot_surprisals = surprisals[start_idx:end_idx]
-            hotspot_results = {
-                "avg_surprisal": np.mean(hotspot_surprisals).item(),
-                "num_tokens": len(hotspot_surprisals),
-            }
-        else:
-            print("  >>> FAILED: Hotspot not found.")
+
+        if hotspot_char_start_in_target != -1:
+            # 2. Calculate the character start/end within the *full_text*.
+            #    This accounts for the length of the context and the space separator.
+            context_len = len(clean_context) + 1  # +1 for the space
+            hotspot_char_start_in_full = context_len + hotspot_char_start_in_target
+            hotspot_char_end_in_full = hotspot_char_start_in_full + len(hotspot)
+
+            # 3. Find all tokens whose character offsets fall within the hotspot's span.
+            for i, (token_start, token_end) in enumerate(offset_mapping):
+                # Check for any overlap between the token's span and the hotspot's span.
+                if token_end > hotspot_char_start_in_full and token_start < hotspot_char_end_in_full:
+                    hotspot_indices.append(i)
+
+            if hotspot_indices:
+                hotspot_surprisals = [surprisals[i] for i in hotspot_indices]
+                hotspot_results = {
+                    "avg_surprisal": np.mean(hotspot_surprisals).item(),
+                    "num_tokens": len(hotspot_surprisals),
+                    "tokens": [tokens[i] for i in hotspot_indices]  # Add matched tokens for debugging
+                }
 
         return {
             "full_tokens": tokens,
@@ -55,7 +61,6 @@ class SurprisalEvaluation(EvaluationCase):
             "hotspot_analysis": hotspot_results
         }
 
-    # CORRECTED: Added the 'source_filename' parameter to the method signature.
     def run(self, data: pd.DataFrame, source_filename: str = "unknown") -> List[Dict]:
         """
         Runs the evaluation on the provided data.
