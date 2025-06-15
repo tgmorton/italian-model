@@ -1,5 +1,5 @@
 # Base configuration for a 10M parameter model training run
-output_dir: "models/50M"
+output_dir: "models/50M_10epoch"
 train_dataset_path: "data/tokenized/50M/train"
 
 # --- Model ---
