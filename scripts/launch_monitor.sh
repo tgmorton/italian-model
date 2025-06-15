@@ -16,12 +16,14 @@
 set -e
 
 # --- Script Usage ---
-if [ "$#" -ne 1 ]; then
-    echo "Usage: sbatch $0 <model_size_tag>"
-    echo "Example: sbatch $0 10M"
+if [ "$#" -eq 0 ] || [ "$#" -gt 2 ]; then
+    echo "Usage: sbatch $0 <model_size_tag> [perplexity_eval_portion]"
+    echo "Example (full run): sbatch $0 10M"
+    echo "Example (33% of perplexity test set): sbatch $0 10M 0.33"
     exit 1
 fi
 MODEL_SIZE_TAG=$1
+PERPLEXITY_PORTION=$2
 
 # === Environment Setup ===
 echo "=== Job Started: $(date) ==="
@@ -52,6 +54,12 @@ CONTAINER_TOKENIZER_DIR="/workspace/tokenizer"
 # CORRECTED: Define a new container path for the surprisal data
 CONTAINER_SURPRISAL_DIR="/surprisal_data"
 
+# --- Process Optional Argument ---
+PERPLEXITY_ARG=""
+if [ -n "$PERPLEXITY_PORTION" ]; then
+    PERPLEXITY_ARG="--perplexity_eval_portion ${PERPLEXITY_PORTION}"
+fi
+
 # --- Preparations ---
 echo "Project Directory (Host): ${HOST_PROJECT_DIR}"
 if [ ! -d "${HOST_MODELS_DIR}/${MODEL_SIZE_TAG}" ]; then echo "ERROR: Target model directory not found at ${HOST_MODELS_DIR}/${MODEL_SIZE_TAG}"; exit 1; fi
@@ -74,7 +82,8 @@ singularity exec --nv \
         --output_base_dir \"${CONTAINER_RESULTS_DIR}\" \
         --tokenizer_base_dir \"${CONTAINER_TOKENIZER_DIR}\" \
         --surprisal_data_dir \"${CONTAINER_SURPRISAL_DIR}\" \
-        --perplexity_data_base_path \"${CONTAINER_DATA_DIR}/tokenized\""
+        --perplexity_data_base_path \"${CONTAINER_DATA_DIR}/tokenized\" \
+        ${PERPLEXITY_ARG}"
 
 # === Job Completion ===
 echo "=== Job Finished: $(date) ==="
