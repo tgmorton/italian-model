@@ -27,6 +27,8 @@ def main():
     parser.add_argument("--tokenizer_base_dir", type=Path, required=True,
                         help="Base directory for tokenizers (e.g., /workspace/tokenizer).")
 
+    parser.add_argument("--perplexity_eval_portion", type=float, default=1.0, help="Portion of the perplexity test set to evaluate on (e.g., 0.33 for 33%). Default is 1.0 (all).")
+
     parser.add_argument("--surprisal_data_dir", type=Path,
                         help="Path to the directory with CSV files for surprisal evaluation.")
     parser.add_argument("--perplexity_data_base_path", type=Path,
@@ -94,14 +96,21 @@ def main():
                         results = all_surprisal_results
                         data_name_for_filename = "surprisal_stimuli"
 
+
                     elif case_name == 'perplexity':
                         if not args.perplexity_data_base_path:
                             raise ValueError("Perplexity evaluation requires --perplexity_data_base_path.")
                         perplexity_data_path = args.perplexity_data_base_path / model_size_tag / "test"
+
                         if not perplexity_data_path.exists():
                             raise FileNotFoundError(
                                 f"Perplexity data not found for {model_size_tag} at {perplexity_data_path}")
-                        results = evaluator.run(data_path=perplexity_data_path)
+
+                        results = evaluator.run(
+                            data_path=perplexity_data_path,
+                            eval_portion=args.perplexity_eval_portion
+                        )
+
                         data_name_for_filename = perplexity_data_path.name
 
                     output_filename = f"{checkpoint_path.name}_{data_name_for_filename}_{case_name}_results.json"
