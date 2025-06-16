@@ -75,6 +75,11 @@ mkdir -p "${HOST_LOGS_DIR}"
 # === Monitor Script Execution ===
 echo "Starting Python monitor.py script inside Singularity container..."
 
+# The python script requires a --tokenizer_base_dir and infers the tokenizer's
+# subdirectory from the model's directory name. To provide the correct tokenizer
+# (e.g., "10M") for a model like "10M_10epoch", we use a specific Singularity
+# bind mount. The final -B flag below maps the correct host tokenizer directory
+# to the path that the python script expects to find inside the container.
 singularity exec --nv \
     -B "${HOST_PROJECT_DIR}":"${CONTAINER_WORKSPACE}" \
     -B "${HOST_DATA_DIR}":"${CONTAINER_DATA_DIR}" \
@@ -82,12 +87,7 @@ singularity exec --nv \
     -B "${HOST_RESULTS_DIR}":"${CONTAINER_RESULTS_DIR}" \
     -B "${HOST_SURPRISAL_DIR}":"${CONTAINER_SURPRISAL_DIR}" \
     -B "${HOST_TOKENIZER_DIR}":"${CONTAINER_TOKENIZER_DIR}" \
-    \
-    # --- The Magic ---
-    # This specific bind mount maps the REAL tokenizer directory on the host to the
-    # path the Python script EXPECTS to find inside the container.
     -B "${HOST_TOKENIZER_DIR}/${TOKENIZER_NAME}":"${CONTAINER_TOKENIZER_DIR}/${MODEL_DIR_NAME}" \
-    \
     "${HOST_SIF_PATH}" \
     bash -c "cd ${CONTAINER_WORKSPACE} && python3 -m evaluation.monitor \
         --model_parent_dir \"${CONTAINER_MODELS_DIR}/${MODEL_DIR_NAME}\" \
