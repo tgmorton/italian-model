@@ -66,7 +66,7 @@ srun singularity exec --nv \
     bash -c "cd /workspace && python -m src.train \
         --config-file ${CONFIG_FILE} \
         --seed ${SEED} \
-        --learning_rate ${CURRENT_LR} \
+        --learning-rate ${CURRENT_LR} \
         --output_dir ${OUTPUT_DIR}"
 
 echo "========================================================"
