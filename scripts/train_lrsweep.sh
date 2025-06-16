@@ -67,7 +67,7 @@ srun singularity exec --nv \
         --config-file ${CONFIG_FILE} \
         --seed ${SEED} \
         --learning-rate ${CURRENT_LR} \
-        --output_dir ${OUTPUT_DIR}"
+        --output-dir ${OUTPUT_DIR}"
 
 echo "========================================================"
 echo "Job Finished: $(date)"
