@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=italian-llm-seed-sweep  # A descriptive job name
-#SBATCH --partition=general_gpu_a5000       # The general_gpu_a500 partition
+#SBATCH --partition=general_gpu_p6000       # The general_gpu_a500 partition
 #SBATCH --array=1-9                        # Create a job array for seeds 1 through 9
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -31,11 +31,11 @@ HOST_PROJECT_DIR="/home/AD/thmorton/italian-model"
 HOST_SIF_PATH="/home/AD/thmorton/italian-model/italian_llm_env.sif"
 
 # --- Define the experiment config file ---
-CONFIG_FILE="configs/25M.yaml"
+CONFIG_FILE="configs/10M.yaml"
 
 # --- Define dynamic parameters based on array task ID ---
 SEED=$SLURM_ARRAY_TASK_ID
-OUTPUT_DIR="models/seed_sweep/25M-seed_${SEED}"
+OUTPUT_DIR="models/seed_sweep/10M-seed_${SEED}"
 
 # --- Preparations ---
 echo "Project Directory (Host): ${HOST_PROJECT_DIR}"
@@ -60,7 +60,7 @@ srun singularity exec --nv \
     bash -c "cd /workspace && python -m src.train \
         --config-file ${CONFIG_FILE} \
         --seed ${SEED} \
-        --output_dir ${OUTPUT_DIR}"
+        --output-dir ${OUTPUT_DIR}"
 
 echo "========================================================"
 echo "Job Finished: $(date)"
