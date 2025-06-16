@@ -19,15 +19,21 @@ set -e
 if [ "$#" -eq 0 ] || [ "$#" -gt 2 ]; then
     echo "Usage: sbatch $0 <model_size_tag> [perplexity_eval_portion]"
     echo "Example (full run): sbatch $0 10M"
-    echo "Example (33% of perplexity test set): sbatch $0 10M 0.33"
+    echo "Example (run with specific tokenizer): sbatch $0 25M_10epoch"
+    echo "Example (33% of perplexity test set): sbatch $0 25M_10epoch 0.33"
     exit 1
 fi
 MODEL_SIZE_TAG=$1
 PERPLEXITY_PORTION=$2
 
+# --- Derivation of Tokenizer ---
+# Get the tokenizer name from the part of the model tag before the first '_'
+TOKENIZER_TAG=${MODEL_SIZE_TAG%%_*}
+
 # === Environment Setup ===
 echo "=== Job Started: $(date) ==="
 echo "Target Model Size: ${MODEL_SIZE_TAG}"
+echo "Using Tokenizer: ${TOKENIZER_TAG}"
 echo "Job ID: $SLURM_JOB_ID"
 echo "Node: $SLURMD_NODENAME"
 
@@ -63,6 +69,8 @@ fi
 # --- Preparations ---
 echo "Project Directory (Host): ${HOST_PROJECT_DIR}"
 if [ ! -d "${HOST_MODELS_DIR}/${MODEL_SIZE_TAG}" ]; then echo "ERROR: Target model directory not found at ${HOST_MODELS_DIR}/${MODEL_SIZE_TAG}"; exit 1; fi
+# MODIFIED: Check for the derived tokenizer directory
+if [ ! -d "${HOST_TOKENIZER_DIR}/${TOKENIZER_TAG}" ]; then echo "ERROR: Tokenizer directory not found at ${HOST_TOKENIZER_DIR}/${TOKENIZER_TAG}"; exit 1; fi
 if [ ! -d "${HOST_SURPRISAL_DIR}" ]; then echo "ERROR: Surprisal data directory not found at ${HOST_SURPRISAL_DIR}"; exit 1; fi
 mkdir -p "${HOST_RESULTS_DIR}"
 mkdir -p "${HOST_LOGS_DIR}"
@@ -76,11 +84,12 @@ singularity exec --nv \
     -B "${HOST_MODELS_DIR}":"${CONTAINER_MODELS_DIR}" \
     -B "${HOST_RESULTS_DIR}":"${CONTAINER_RESULTS_DIR}" \
     -B "${HOST_SURPRISAL_DIR}":"${CONTAINER_SURPRISAL_DIR}" \
+    -B "${HOST_TOKENIZER_DIR}":"${CONTAINER_TOKENIZER_DIR}" \
     "${HOST_SIF_PATH}" \
     bash -c "cd ${CONTAINER_WORKSPACE} && python3 -m evaluation.monitor \
         --model_parent_dir \"${CONTAINER_MODELS_DIR}/${MODEL_SIZE_TAG}\" \
         --output_base_dir \"${CONTAINER_RESULTS_DIR}\" \
-        --tokenizer_base_dir \"${CONTAINER_TOKENIZER_DIR}\" \
+        --tokenizer_path \"${CONTAINER_TOKENIZER_DIR}/${TOKENIZER_TAG}\" \
         --surprisal_data_dir \"${CONTAINER_SURPRISAL_DIR}\" \
         --perplexity_data_base_path \"${CONTAINER_DATA_DIR}/tokenized\" \
         ${PERPLEXITY_ARG}"
