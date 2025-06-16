@@ -32,7 +32,7 @@ HOST_PROJECT_DIR="/home/AD/thmorton/italian-model"
 HOST_SIF_PATH="/home/AD/thmorton/italian-model/italian_llm_env.sif"
 
 # --- Define the experiment config file ---
-CONFIG_FILE="configs/10M.yaml"
+CONFIG_FILE="configs/10M_experiment.yaml"
 
 # --- Define dynamic parameters based on array task ID ---
 SEED=$SLURM_ARRAY_TASK_ID
