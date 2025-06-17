@@ -26,6 +26,9 @@ def main():
     # ADDED: Explicit path to the base tokenizer directory
     parser.add_argument("--tokenizer_base_dir", type=Path, required=True,
                         help="Base directory for tokenizers (e.g., /workspace/tokenizer).")
+    # NEW ARGUMENT: Explicit tokenizer name
+    parser.add_argument("--tokenizer_name", type=str, required=True,
+                        help="The specific name of the tokenizer directory (e.g., '10M' or '25M').")
 
     parser.add_argument("--perplexity_eval_portion", type=float, default=1.0, help="Portion of the perplexity test set to evaluate on (e.g., 0.33 for 33%). Default is 1.0 (all).")
 
@@ -54,10 +57,11 @@ def main():
             print(f"\n{'=' * 80}")
             print(f"Processing checkpoint: {checkpoint_path}")
 
+            # model_size_tag is still useful for output directories
             model_size_tag = checkpoint_path.parent.name
 
-            # CORRECTED: Build tokenizer path from the new base directory argument
-            tokenizer_path = args.tokenizer_base_dir / model_size_tag
+            # CORRECTED: Build tokenizer path using the explicit tokenizer_name argument
+            tokenizer_path = args.tokenizer_base_dir / args.tokenizer_name
 
             if not tokenizer_path.exists():
                 print(f"  [ERROR] Tokenizer not found at expected path: {tokenizer_path}. Skipping checkpoint.")
@@ -100,6 +104,7 @@ def main():
                     elif case_name == 'perplexity':
                         if not args.perplexity_data_base_path:
                             raise ValueError("Perplexity evaluation requires --perplexity_data_base_path.")
+                        # Perplexity data path should still be based on the model_size_tag
                         perplexity_data_path = args.perplexity_data_base_path / model_size_tag / "test"
 
                         if not perplexity_data_path.exists():

@@ -73,10 +73,10 @@ echo "Starting Python monitor.py script inside Singularity container..."
 
 # Execute the Python script within the Singularity container, leveraging the GPU (--nv)
 # and binding the necessary host directories to their container counterparts.
-# The critical bind mount for the tokenizer is:
-# -B "${HOST_TOKENIZER_DIR}/${TOKENIZER_NAME}":"${CONTAINER_TOKENIZER_DIR}/${MODEL_DIR_NAME}"
+# The critical bind mount for the tokenizer is now:
+# -B "${HOST_TOKENIZER_DIR}/${TOKENIZER_NAME}":"${CONTAINER_TOKENIZER_DIR}/${TOKENIZER_NAME}"
 # This maps the specific host tokenizer directory (e.g., /home/.../tokenizer/10M)
-# to the path inside the container that the Python script expects (e.g., /workspace/tokenizer/10M_10epoch).
+# to the path inside the container that the python script now explicitly expects (e.g., /workspace/tokenizer/10M).
 singularity exec --nv \
     -B "${HOST_PROJECT_DIR}":"${CONTAINER_WORKSPACE}" \
     -B "${HOST_DATA_DIR}":"${CONTAINER_DATA_DIR}" \
@@ -84,12 +84,13 @@ singularity exec --nv \
     -B "${HOST_RESULTS_DIR}":"${CONTAINER_RESULTS_DIR}" \
     -B "${HOST_SURPRISAL_DIR}":"${CONTAINER_SURPRISAL_DIR}" \
     -B "${HOST_TOKENIZER_DIR}":"${CONTAINER_TOKENIZER_DIR}" \
-    -B "${HOST_TOKENIZER_DIR}/${TOKENIZER_NAME}":"${CONTAINER_TOKENIZER_DIR}/${MODEL_DIR_NAME}" \
+    -B "${HOST_TOKENIZER_DIR}/${TOKENIZER_NAME}":"${CONTAINER_TOKENIZER_DIR}/${TOKENIZER_NAME}" \
     "${HOST_SIF_PATH}" \
     bash -c "cd ${CONTAINER_WORKSPACE} && python3 -m evaluation.monitor \
         --model_parent_dir \"${CONTAINER_MODELS_DIR}/${MODEL_DIR_NAME}\" \
         --output_base_dir \"${CONTAINER_RESULTS_DIR}\" \
         --tokenizer_base_dir \"${CONTAINER_TOKENIZER_DIR}\" \
+        --tokenizer_name \"${TOKENIZER_NAME}\" \
         --surprisal_data_dir \"${CONTAINER_SURPRISAL_DIR}\" \
         --perplexity_data_base_path \"${CONTAINER_DATA_DIR}/tokenized\" \
         ${PERPLEXITY_ARG}"
